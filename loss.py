@@ -1,10 +1,12 @@
 import torch.nn as nn
-from torchvision.models import vgg19, VGG19_Weights
+from torchvision.models import VGG19_Weights, vgg19
+
+from config import DEVICE
+
 
 class VGGLoss(nn.Module):
     def __init__(self):
         super().__init__()
-        # Use weights parameter as pretrained is deprecated
         self.vgg = vgg19(weights=VGG19_Weights.DEFAULT).features[:36].eval().to(DEVICE)
         self.loss = nn.MSELoss()
 

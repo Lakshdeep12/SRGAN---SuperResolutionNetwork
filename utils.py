@@ -1,8 +1,12 @@
-import torch
 import os
+
 import numpy as np
+import torch
 from PIL import Image
 from torchvision.utils import save_image
+
+from config import DEVICE, test_transform
+
 
 def gradient_penalty(critic, real, fake, device):
     BATCH_SIZE, C, H, W = real.shape
@@ -24,6 +28,7 @@ def gradient_penalty(critic, real, fake, device):
     gradient_penalty = torch.mean((gradient_norm - 1) ** 2)
     return gradient_penalty
 
+
 def save_checkpoint(model, optimizer, filename="my_checkpoint.pth.tar"):
     print("=> Saving checkpoint")
     checkpoint = {
@@ -31,6 +36,7 @@ def save_checkpoint(model, optimizer, filename="my_checkpoint.pth.tar"):
         "optimizer": optimizer.state_dict(),
     }
     torch.save(checkpoint, filename)
+
 
 def load_checkpoint(checkpoint_file, model, optimizer, lr):
     print("=> Loading checkpoint")
@@ -41,11 +47,12 @@ def load_checkpoint(checkpoint_file, model, optimizer, lr):
     for param_group in optimizer.param_groups:
         param_group["lr"] = lr
 
+
 def plot_examples(low_res_folder, gen):
     if not os.path.exists(low_res_folder):
         print(f"Low resolution directory '{low_res_folder}' not found. Skipping plot.")
         return
-    
+
     os.makedirs("saved", exist_ok=True)
     files = os.listdir(low_res_folder)
     gen.eval()

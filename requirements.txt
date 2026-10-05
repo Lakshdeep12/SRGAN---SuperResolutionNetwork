@@ -1,4 +1,6 @@
-pytorch
+torch
+torchvision
 albumentations
 numpy
-PIL
+Pillow
+tqdm

@@ -1,11 +1,29 @@
-import torch
-from torch import nn
-from torch import optim
-from torch.utils.data import DataLoader
-from tqdm import tqdm
 import os
 
+import torch
+from torch import nn, optim
+from torch.utils.data import DataLoader
+from tqdm import tqdm
+
+from config import (
+    BATCH_SIZE,
+    CHECKPOINT_DISC,
+    CHECKPOINT_GEN,
+    DEVICE,
+    LEARNING_RATE,
+    LOAD_MODEL,
+    NUM_EPOCHS,
+    NUM_WORKERS,
+    SAVE_MODEL,
+)
+from dataset import MyImageFolder
+from loss import VGGLoss
+from model import Discriminator, Generator
+from utils import load_checkpoint, plot_examples, save_checkpoint
+
+
 torch.backends.cudnn.benchmark = True
+
 
 def train_fn(loader, disc, gen, opt_gen, opt_disc, mse, bce, vgg_loss):
     loop = tqdm(loader, leave=True)
@@ -14,7 +32,6 @@ def train_fn(loader, disc, gen, opt_gen, opt_disc, mse, bce, vgg_loss):
         high_res = high_res.to(DEVICE)
         low_res = low_res.to(DEVICE)
 
-        ### Train Discriminator: max log(D(x)) + log(1 - D(G(z)))
         fake = gen(low_res)
         disc_real = disc(high_res)
         disc_fake = disc(fake.detach())
@@ -28,7 +45,6 @@ def train_fn(loader, disc, gen, opt_gen, opt_disc, mse, bce, vgg_loss):
         loss_disc.backward()
         opt_disc.step()
 
-        ### Train Generator: min log(1 - D(G(z))) <-> max log(D(G(z)))
         disc_fake = disc(fake)
         adversarial_loss = 1e-3 * bce(disc_fake, torch.ones_like(disc_fake))
         loss_for_vgg = 0.006 * vgg_loss(fake, high_res)
@@ -41,12 +57,14 @@ def train_fn(loader, disc, gen, opt_gen, opt_disc, mse, bce, vgg_loss):
         if idx % 200 == 0:
             plot_examples("test_images/", gen)
 
+
 def main():
-    if not os.path.exists("new_data/"):
-        print("Training cancelled: 'new_data/' directory not found.")
+    dataset_root = "new_data/" if os.path.exists("new_data/") else "images"
+    if not os.path.exists(dataset_root):
+        print(f"Training cancelled: '{dataset_root}' directory not found.")
         return
 
-    dataset = MyImageFolder(root_dir="new_data/")
+    dataset = MyImageFolder(root_dir=dataset_root)
     loader = DataLoader(
         dataset,
         batch_size=BATCH_SIZE,
@@ -64,27 +82,20 @@ def main():
 
     if LOAD_MODEL:
         if os.path.exists(CHECKPOINT_GEN) and os.path.exists(CHECKPOINT_DISC):
-            load_checkpoint(
-                CHECKPOINT_GEN,
-                gen,
-                opt_gen,
-                LEARNING_RATE,
-            )
-            load_checkpoint(
-               CHECKPOINT_DISC, disc, opt_disc, LEARNING_RATE,
-            )
+            load_checkpoint(CHECKPOINT_GEN, gen, opt_gen, LEARNING_RATE)
+            load_checkpoint(CHECKPOINT_DISC, disc, opt_disc, LEARNING_RATE)
         else:
             print("Checkpoints not found. Starting training from scratch.")
 
-    # Limit epochs to 1 for validation debug verification
     epochs_to_run = min(1, NUM_EPOCHS)
     for epoch in range(epochs_to_run):
-        print(f"Epoch [{epoch+1}/{epochs_to_run}]")
+        print(f"Epoch [{epoch + 1}/{epochs_to_run}]")
         train_fn(loader, disc, gen, opt_gen, opt_disc, mse, bce, vgg_loss)
 
         if SAVE_MODEL:
             save_checkpoint(gen, opt_gen, filename=CHECKPOINT_GEN)
             save_checkpoint(disc, opt_disc, filename=CHECKPOINT_DISC)
+
 
 if __name__ == "__main__":
     main()
