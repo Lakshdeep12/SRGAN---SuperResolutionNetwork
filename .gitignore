@@ -1,0 +1,9 @@
+*.pth
+*.pth.tar
+*.ckpt
+*.pt
+saved/
+new_data/
+.venv/
+__pycache__/
+*.pyc
