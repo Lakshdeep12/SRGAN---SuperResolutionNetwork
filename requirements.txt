@@ -1,0 +1,4 @@
+pytorch
+albumentations
+numpy
+PIL
